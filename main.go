@@ -1,23 +1,21 @@
 package main
 
 import (
+	"github.com/dchest/captcha"
 	"github.com/garyburd/redigo/redis"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"github.com/kataras/iris/sessions"
+	"io"
 	"net/http"
 	"store/Api"
+	"strconv"
 )
 
 var (
 	FastStore = "FASTSTORE"
-	sess      = sessions.New(sessions.Config{Cookie:FastStore})
+	sess      = sessions.New(sessions.Config{Cookie: FastStore})
 )
-
-func checkUser(cli redis.Conn, name string) (bool, error) {
-	exist, err := redis.Bool(cli.Do("EXISTS", name))
-	return exist, err
-}
 
 func main() {
 	app := iris.New()
@@ -30,134 +28,163 @@ func main() {
 	}
 	defer cli.Close()
 
+	//使用中间件添加header信息
 	app.Use(func(ctx context.Context) {
 		ctx.Header("Server", "Server/1.0")
 		ctx.Header("X-Powered-By", "SJJ")
 		ctx.Next()
 	})
 
-	capt := app.Party("/captcha")
+	api := app.Party("/api")
 	{
-		capt.Get("/create", func(ctx context.Context) {
-			//id := captcha.NewLen(4)
+		api.Get("/setItem", func(ctx context.Context) {
+			item := ctx.FormValue("item")
+			str := ctx.FormValue("count")
+			count, err := strconv.ParseInt(str, 10, 64)
+			session := sess.Start(ctx)
+			admin, err := session.GetBoolean("ADMIN")
+			if err != nil {
+				ctx.StatusCode(iris.StatusForbidden)
+				return
+			}
+			if !admin {
+				ctx.StatusCode(iris.StatusForbidden)
+				return
+			}
+			err = wheel.SetItem(cli, item, count)
+			if err != nil {
+				WriteJson(ctx, 10001, "设置失败", nil)
+				return
+			}
 		})
 	}
 
+	//验证码
+	capt := app.Party("/captcha")
+	{
+		//返回验证码图片 [GET /captcha/create]
+		capt.Get("/create", func(ctx context.Context) {
+			id := captcha.NewLen(4)
+			session := sess.Start(ctx)
+			session.Set("ID", id)
+			ctx.StreamWriter(func(w io.Writer) bool {
+				err = captcha.WriteImage(w, id, 240, 80)
+				if err != nil {
+					logging.Debug(err)
+					return false
+				}
+				return false
+			})
+		})
+	}
+
+	//注册
 	reg := app.Party("/register")
 	{
+		//检测用户名是否存在 [GET /register/checkUser?name=xxx]
 		reg.Get("/checkUser", func(ctx context.Context) {
-			json := make(map[string]interface{})
-			json["code"] = 0
-			json["msg"] = "OK"
+
 			name := ctx.FormValue("name")
-			exist, err := checkUser(cli, name)
+			exist, err := wheel.CheckUser(cli, name)
 			if err != nil {
-				json["code"] = 10000
-				json["msg"] = "查询失败"
-				_, err = ctx.JSON(json)
+				WriteJson(ctx, 10000, "查询失败", nil)
 				return
 			}
 			if exist {
-				json["code"] = 10001
-				json["msg"] = "用户名已存在"
-				_, err = ctx.JSON(json)
+				WriteJson(ctx, 10001, "用户名已存在", nil)
 				return
 			} else {
 				logging.Debug(name)
-				_,err = ctx.JSON(json)
+				WriteJson(ctx, 0, "OK", nil)
 			}
 		})
+		//增加新用户 [POST /register/addUser] 参数 name=xxx&nick=xxx&pwd=xxx
 		reg.Post("/addUser", func(ctx context.Context) {
-			json := make(map[string]interface{})
-			json["code"] = 0
-			json["msg"] = "OK"
 			name := ctx.PostValue("name")
+			nick := ctx.PostValue("nick")
 			pwd := ctx.PostValue("pwd")
-			if name == "" || pwd == "" {
-				json["code"] = 10000
-				json["msg"] = "缺少参数"
-				_, _ = ctx.JSON(json)
+			if name == "" || pwd == "" || nick == "" {
+				WriteJson(ctx, 10000, "缺少参数", nil)
 				return
 			}
-			exist, err := checkUser(cli, name)
+			exist, err := wheel.CheckUser(cli, name)
 			if exist {
-				json["code"] = 10001
-				json["msg"] = "用户名已存在"
-				_, err = ctx.JSON(json)
+				WriteJson(ctx, 10001, "用户名已存在", nil)
 				return
 			}
-			pwd = wheel.MD5String(pwd)
-			_, err = cli.Do("SET", name, pwd)
+			err = wheel.AddUser(cli, name, nick, pwd)
 			if err != nil {
-				logging.Debug("cannot set data")
+				logging.Debug(err)
 				return
 			} else {
 				logging.Debug("new user: ", name)
 			}
-			_, err = ctx.JSON(json)
-			if err != nil {
-				logging.Debug(err)
-				return
-			}
+			WriteJson(ctx, 0, "OK", nil)
 		})
 	}
 
+	//登陆
 	login := app.Party("/login")
 	{
+		//登陆 [POST /login/do] 参数 name=xxx&pwd=xxx&capt=xxxx
 		login.Post("/do", func(ctx context.Context) {
-			json := make(map[string]interface{})
-			json["code"] = 0
-			json["msg"] = "OK"
 			name := ctx.PostValue("name")
 			pwd := ctx.PostValue("pwd")
-			if name == "" || pwd == "" {
-				json["code"] = 10000
-				json["msg"] = "缺少参数"
-				_, err = ctx.JSON(json)
+			capt := ctx.PostValue("capt")
+			if name == "" || pwd == "" || capt == "" {
+				WriteJson(ctx, 10000, "缺少参数", nil)
+				return
+			}
+			session := sess.Start(ctx)
+			id := session.GetString("ID")
+			if id == "" {
+				WriteJson(ctx, 10001, "用户名已存在", nil)
+				return
+			}
+			if !captcha.VerifyString(id, capt) {
+				WriteJson(ctx, 10002, "验证码错误", nil)
 				return
 			}
 			pwd = wheel.MD5String(pwd)
-			exist, err := checkUser(cli, name)
+			exist, err := wheel.CheckUser(cli, name)
 			if err != nil {
-				logging.Debug(err)
+				WriteJson(ctx, 10000, "查询失败", nil)
 				return
 			} else {
 				if exist {
-					password, err := redis.String(cli.Do("GET", name))
+					password, err := wheel.GetPwd(cli, name)
 					if err != nil {
-						logging.Debug(err)
+						WriteJson(ctx, 10000, "查询失败", nil)
 						return
 					}
 					if password == pwd {
-						session := sess.Start(ctx)
+						session.Set("NAME", name)
 						session.Set("AUTH", true)
-						_, err = ctx.JSON(json)
+						WriteJson(ctx, 0, "OK", nil)
 					} else {
-						json["code"] = 10000
-						json["msg"] = "用户名或密码不正确"
-						_, err = ctx.JSON(json)
+						WriteJson(ctx, 10003, "用户名或密码错误", nil)
 						return
 					}
 				} else {
-					json["code"] = 10000
-					json["msg"] = "用户名或密码不正确"
-					_, err = ctx.JSON(json)
+					WriteJson(ctx, 10003, "用户名或密码错误", nil)
 					return
 				}
 			}
 		})
+		//退出登陆 [POST /login/out]
 		login.Get("/out", func(ctx context.Context) {
 			session := sess.Start(ctx)
 			session.Set("AUTH", false)
+			WriteJson(ctx, 0, "OK", nil)
 		})
 	}
-	
+
 	main := app.Party("/main")
 	{
+		//主页
 		main.Get("/", func(ctx context.Context) {
 			auth, err := sess.Start(ctx).GetBoolean("AUTH")
 			if err != nil {
-				logging.Debug(err)
 				ctx.StatusCode(iris.StatusForbidden)
 				return
 			}
@@ -167,9 +194,41 @@ func main() {
 			}
 			_, err = ctx.WriteString("The cake is a lie!")
 		})
+		//抢购 [GET /main/purchase?item=xxx]
+		main.Get("/purchase", func(ctx context.Context) {
+			session := sess.Start(ctx)
+			auth, err := session.GetBoolean("AUTH")
+			if err != nil {
+				logging.Debug(err)
+				ctx.StatusCode(iris.StatusForbidden)
+				return
+			}
+			if !auth {
+				ctx.StatusCode(iris.StatusForbidden)
+				return
+			}
+			item := ctx.FormValue("item")
+			count, err := wheel.CheckItem(cli, item)
+			if count <= 0 {
+				WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
+				return
+			} else {
+				name := session.GetString("name")
+				_, err = cli.Do("WATCH", "store:item:"+item)
+				_, err = cli.Do("MULTI")
+				_, err = cli.Do("SET", "store:item:"+item, count-1)
+				_, err = cli.Do("RPUSH", "store:purchase:"+item, name)
+				_, err := cli.Do("EXEC")
+				if err != nil {
+					WriteJson(ctx, 10005, "抢购失败，请重试", nil)
+					return
+				}
+				WriteJson(ctx, 0, "OK", nil)
+			}
+		})
 	}
 
-
+	//自定义错误页面
 	app.RegisterView(iris.HTML("./views", ".html"))
 	app.OnAnyErrorCode(func(ctx context.Context) {
 		code := ctx.GetStatusCode()
@@ -182,6 +241,19 @@ func main() {
 	err = app.Run(iris.Addr(":8080"))
 	if err != nil {
 		logging.Debug(err)
+		return
+	}
+}
+
+func WriteJson(context context.Context, code int, message string, cbk func(map[string]interface{})) {
+	data := make(map[string]interface{})
+	data["code"] = code
+	data["message"] = message
+	if cbk != nil {
+		cbk(data)
+	}
+	_, err := context.JSON(data)
+	if err != nil {
 		return
 	}
 }
