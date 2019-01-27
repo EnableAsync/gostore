@@ -138,7 +138,7 @@ func main() {
 			session := sess.Start(ctx)
 			id := session.GetString("ID")
 			if id == "" {
-				WriteJson(ctx, 10001, "用户名已存在", nil)
+				WriteJson(ctx, 10000, "缺少参数", nil)
 				return
 			}
 			if !captcha.VerifyString(id, capt) {
