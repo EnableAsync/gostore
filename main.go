@@ -98,13 +98,24 @@ func main() {
 				WriteJson(ctx, 0, "OK", nil)
 			}
 		})
-		//增加新用户 [POST /register/addUser] 参数 name=xxx&nick=xxx&pwd=xxx
+		//增加新用户 [POST /register/addUser] 参数 name=xxx&nick=xxx&pwd=xxx&capt=xxx
 		reg.Post("/addUser", func(ctx context.Context) {
 			name := ctx.PostValue("name")
 			nick := ctx.PostValue("nick")
 			pwd := ctx.PostValue("pwd")
-			if name == "" || pwd == "" || nick == "" {
+			capt := ctx.PostValue("capt")
+			if name == "" || pwd == "" || nick == "" || capt == "" {
 				WriteJson(ctx, 10000, "缺少参数", nil)
+				return
+			}
+			session := sess.Start(ctx)
+			id := session.GetString("ID")
+			if id == "" {
+				WriteJson(ctx, 10002, "验证码错误", nil)
+				return
+			}
+			if !captcha.VerifyString(id, capt) {
+				WriteJson(ctx, 10002, "验证码错误", nil)
 				return
 			}
 			exist, err := wheel.CheckUser(cli, name)
@@ -160,7 +171,8 @@ func main() {
 					if password == pwd {
 						session.Set("NAME", name)
 						session.Set("AUTH", true)
-						WriteJson(ctx, 0, "OK", nil)
+						//WriteJson(ctx, 0, "OK", nil)
+						ctx.Redirect("/", iris.StatusMovedPermanently)
 					} else {
 						WriteJson(ctx, 10003, "用户名或密码错误", nil)
 						return
@@ -181,19 +193,7 @@ func main() {
 
 	main := app.Party("/main")
 	{
-		//主页
-		main.Get("/", func(ctx context.Context) {
-			auth, err := sess.Start(ctx).GetBoolean("AUTH")
-			if err != nil {
-				ctx.StatusCode(iris.StatusForbidden)
-				return
-			}
-			if !auth {
-				ctx.StatusCode(iris.StatusForbidden)
-				return
-			}
-			_, err = ctx.WriteString("The cake is a lie!")
-		})
+
 		//抢购 [GET /main/purchase?item=xxx]
 		main.Get("/purchase", func(ctx context.Context) {
 			session := sess.Start(ctx)
@@ -228,6 +228,23 @@ func main() {
 		})
 	}
 
+	//主页
+	app.Get("/", func(ctx context.Context) {
+		auth, err := sess.Start(ctx).GetBoolean("AUTH")
+		if err != nil {
+			err = ctx.View("login.html") // 已经注册到views文件夹了
+			return
+		}
+		if !auth {
+			err = ctx.View("login.html") // 已经注册到views文件夹了
+			return
+		}
+		_, err = ctx.WriteString("The cake is a lie!")
+	})
+
+	//使用StaticWeb中间件处理静态文件
+	app.StaticWeb("/", ".")
+
 	//自定义错误页面
 	app.RegisterView(iris.HTML("./views", ".html"))
 	app.OnAnyErrorCode(func(ctx context.Context) {
@@ -238,7 +255,7 @@ func main() {
 		_ = ctx.View("error.html")
 	})
 
-	err = app.Run(iris.Addr(":8080"))
+	err = app.Run(iris.Addr(":8081"))
 	if err != nil {
 		logging.Debug(err)
 		return
