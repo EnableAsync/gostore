@@ -32,6 +32,7 @@ func main() {
 	app.Use(func(ctx context.Context) {
 		ctx.Header("Server", "Server/1.0")
 		ctx.Header("X-Powered-By", "SJJ")
+		ctx.Header("Access-Control-Allow-Origin", "*")
 		ctx.Next()
 	})
 
@@ -96,6 +97,7 @@ func main() {
 			} else {
 				logging.Debug(name)
 				WriteJson(ctx, 0, "OK", nil)
+				return
 			}
 		})
 		//增加新用户 [POST /register/addUser] 参数 name=xxx&nick=xxx&pwd=xxx&capt=xxx
@@ -232,21 +234,21 @@ func main() {
 	app.Get("/", func(ctx context.Context) {
 		auth, err := sess.Start(ctx).GetBoolean("AUTH")
 		if err != nil {
-			err = ctx.View("login.html") // 已经注册到views文件夹了
+			err = ctx.View("login.html") // 已经注册到www文件夹了
 			return
 		}
 		if !auth {
-			err = ctx.View("login.html") // 已经注册到views文件夹了
+			err = ctx.View("login.html") // 已经注册到www文件夹了
 			return
 		}
 		_, err = ctx.WriteString("The cake is a lie!")
 	})
 
 	//使用StaticWeb中间件处理静态文件
-	app.StaticWeb("/", ".")
+	app.StaticWeb("/", "www")
 
 	//自定义错误页面
-	app.RegisterView(iris.HTML("./views", ".html"))
+	app.RegisterView(iris.HTML("www", ".html"))
 	app.OnAnyErrorCode(func(ctx context.Context) {
 		code := ctx.GetStatusCode()
 		ctx.ViewData("code", code)

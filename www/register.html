@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>注册</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/register.css" rel="stylesheet">
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="js/bootstrap.js"></script>
+    <script src="js/register.js"></script>
+</head>
+<body class="text-center">
+<form class="form-register" name="register" action="http://127.0.0.1:8081/register/addUser" method="post">
+    <h1 class="h3 mb-3 font-weight-normal">注册</h1>
+    <div id="regdiv">
+        <label for="name" class="sr-only">用户名</label>
+        <input type="text" id="name" name="name" class="form-control" placeholder="用户名" onkeyup="checkuser()" title="用户名唯一" required autofocus>
+    </div>
+    <label for="nick" class="sr-only">昵称</label>
+    <input type="text" id="nick" name="nick" class="form-control" placeholder="昵称" required>
+    <label for="pwd" class="sr-only">密码</label>
+    <input type="password" id="pwd" name="pwd" class="form-control" placeholder="密码" required>
+    <div id="pwddiv">
+        <label for="pwd2" id="lpwd2" class="sr-only">确认密码</label>
+        <input type="password" id="pwd2" class="form-control" placeholder="确认密码" onblur="validate()" required>
+    </div>
+    <label for="capt" class="sr-only">验证码</label>
+    <input type="text" id="capt" name="capt" class="form-control" placeholder="验证码" required>
+    <img class="mb-0" id="captimg" src="http://127.0.0.1:8081/captcha/create" alt="验证码" width="90" height="45.6">
+    <button class="btn btn-lg btn-primary btn-block" type="submit" id="register">注册</button>
+    <p class="mt-5 mb-3 text-muted">&copy; 2019-2020</p>
+</form>
+</body>
+</html>
+
