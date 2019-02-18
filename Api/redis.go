@@ -22,6 +22,11 @@ func AddUser(cli redis.Conn, name string, nick string, pwd string) error {
 	return err
 }
 
+func GetNickName(cli redis.Conn, name string) (string, error) {
+	nick, err := redis.String(cli.Do("HGET", "store:User:"+name, "nick"))
+	return nick, err
+}
+
 func GetPwd(cli redis.Conn, name string) (string, error) {
 	password, err := redis.String(cli.Do("HGET", "store:User:"+name, "pwd"))
 	return password, err

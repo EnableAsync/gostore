@@ -171,9 +171,13 @@ func main() {
 						return
 					}
 					if password == pwd {
+						nick, err := wheel.GetNickName(cli, name)
 						session.Set("NAME", name)
+						session.Set("NICK", nick)
 						session.Set("AUTH", true)
-						//WriteJson(ctx, 0, "OK", nil)
+						if err != nil {
+							logging.Println("登陆失败")
+						}
 						ctx.Redirect("/", iris.StatusMovedPermanently)
 					} else {
 						WriteJson(ctx, 10003, "用户名或密码错误", nil)
@@ -215,7 +219,7 @@ func main() {
 				WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
 				return
 			} else {
-				name := session.GetString("name")
+				name := session.GetString("NAME")
 				_, err = cli.Do("WATCH", "store:item:"+item)
 				_, err = cli.Do("MULTI")
 				_, err = cli.Do("SET", "store:item:"+item, count-1)
@@ -241,7 +245,9 @@ func main() {
 			err = ctx.View("login.html") // 已经注册到www文件夹了
 			return
 		}
-		_, err = ctx.WriteString("The cake is a lie!")
+		nick := sess.Start(ctx).GetString("NICK")
+		ctx.ViewData("nick", nick)
+		err = ctx.View("index.html")
 	})
 
 	//使用StaticWeb中间件处理静态文件
