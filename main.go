@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/dchest/captcha"
 	"github.com/garyburd/redigo/redis"
 	"github.com/kataras/iris"
@@ -231,7 +232,20 @@ func main() {
 			ctx.ViewData("name", name)
 			err = ctx.View("account.html")
 		})
-		main.Get("/list", func(ctx context.Context) {
+		main.Get("/list123", func(ctx context.Context) {
+			fmt.Println("list")
+			if !LoginAuth(ctx) {
+				fmt.Println("未登录")
+				return
+			}
+			list, err := wheel.GetItemList(cli)
+			if err != nil {
+				WriteJson(ctx, 10000, "查询失败", nil)
+				return
+			}
+			WriteSliceJson(ctx, 0, "OK", "list", list)
+		})
+		main.Get("/order", func(ctx context.Context) {
 			if !LoginAuth(ctx) {
 				return
 			}
@@ -247,7 +261,9 @@ func main() {
 
 	//主页
 	app.Get("/", func(ctx context.Context) {
-		if !LoginAuth(ctx) {
+		auth, _ := sess.Start(ctx).GetBoolean("AUTH")
+		if !auth {
+			_ = ctx.View("login.html") // 已经注册到www文件夹了
 			return
 		}
 		nick := sess.Start(ctx).GetString("NICK")
@@ -275,7 +291,7 @@ func main() {
 	}
 }
 
-func WriteSliceJson(context context.Context, code int, message string, name string, sli []string) {
+func WriteSliceJson(context context.Context, code int, message string, name string, sli interface{}) {
 	data := make(map[string]interface{})
 	data["code"] = code
 	data["message"] = message
@@ -304,7 +320,7 @@ func WriteJson(context context.Context, code int, message string, cbk func(map[s
 func LoginAuth(ctx context.Context) bool {
 	auth, _ := sess.Start(ctx).GetBoolean("AUTH")
 	if !auth {
-		_ = ctx.View("login.html") // 已经注册到www文件夹了
+		ctx.Redirect("/", iris.StatusMovedPermanently)
 		return false
 	}
 	return true
