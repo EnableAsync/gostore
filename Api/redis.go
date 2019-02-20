@@ -2,19 +2,35 @@ package wheel
 
 import "github.com/garyburd/redigo/redis"
 
+/*
+store:User为已注册用户 如store:User:SJJ则表示有一个注册用户，用户名为SJJ
+store:User:SJJ
+{
+	name: "SJJ",
+	nick: "SJJ",
+	pwd: "xxx"
+}
+
+store:Item为商品列表 如store:User:notepad则表示有一件商品，商品名为notepad
+store:User:notepad
+{
+	describe: "xxx",
+	count: 10
+}
+
+store:Purchase为商品抢购到的用户列表 如store:Purchase:notepad则表示抢到了notepad的用户
+store:Purchase:notepad
+[SJJ, test, Tom]
+
+store:User:xxx:List为用户抢购到的商品列表 如store:User:SJJ:List则表示SJJ抢到的商品列表
+store:User:SJJ:List
+[notepad, iphone]
+
+*/
+
 func CheckUser(cli redis.Conn, name string) (bool, error) {
 	exist, err := redis.Bool(cli.Do("EXISTS", "store:User:"+name))
 	return exist, err
-}
-
-func CheckItem(cli redis.Conn, item string) (int64, error) {
-	count, err := redis.Int64(cli.Do("GET", "store:item:"+item))
-	return count, err
-}
-
-func SetItem(cli redis.Conn, item string, count int64) error {
-	_, err := cli.Do("SET", "store:item:"+item, count)
-	return err
 }
 
 func AddUser(cli redis.Conn, name string, nick string, pwd string) error {
@@ -30,4 +46,35 @@ func GetNickName(cli redis.Conn, name string) (string, error) {
 func GetPwd(cli redis.Conn, name string) (string, error) {
 	password, err := redis.String(cli.Do("HGET", "store:User:"+name, "pwd"))
 	return password, err
+}
+
+func CheckItem(cli redis.Conn, item string) (int64, error) {
+	count, err := redis.Int64(cli.Do("HGET", "store:Item:"+item, "count"))
+	return count, err
+}
+
+func SetItem(cli redis.Conn, item string, describe string, count int64) error {
+	_, err := cli.Do("HMSET", "store:Item:"+item, "describe", describe, "count", count)
+	return err
+}
+
+func Purchase(cli redis.Conn, name string, item string, count int64) error {
+	_, err := cli.Do("WATCH", "store:Item:"+item)
+	_, err = cli.Do("MULTI")
+	_, err = cli.Do("SET", "store:Item:"+item, count-1)
+	_, err = cli.Do("RPUSH", "store:Purchase:"+item, name)
+	_, err = cli.Do("RPUSH", "store:User"+name+":List", item)
+	_, err = cli.Do("EXEC")
+	return err
+}
+
+func GetPurchaseCount(cli redis.Conn, name string) (int, error) {
+	count, err := redis.Int(cli.Do("LLEN", "store:User:"+name+":List"))
+	return count, err
+}
+
+func GetPurchaseList(cli redis.Conn, name string) ([]string, error) {
+	count, err := GetPurchaseCount(cli, name)
+	list, err := redis.Strings(cli.Do("LRANGE", "store:User:"+name+":List", 0, count))
+	return list, err
 }

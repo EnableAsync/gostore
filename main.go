@@ -41,6 +41,7 @@ func main() {
 		api.Get("/setItem", func(ctx context.Context) {
 			item := ctx.FormValue("item")
 			str := ctx.FormValue("count")
+			describe := ctx.FormValue("describe")
 			count, err := strconv.ParseInt(str, 10, 64)
 			session := sess.Start(ctx)
 			admin, err := session.GetBoolean("ADMIN")
@@ -52,7 +53,7 @@ func main() {
 				ctx.StatusCode(iris.StatusForbidden)
 				return
 			}
-			err = wheel.SetItem(cli, item, count)
+			err = wheel.SetItem(cli, item, describe, count)
 			if err != nil {
 				WriteJson(ctx, 10001, "设置失败", nil)
 				return
@@ -202,15 +203,7 @@ func main() {
 
 		//抢购 [GET /main/purchase?item=xxx]
 		main.Get("/purchase", func(ctx context.Context) {
-			session := sess.Start(ctx)
-			auth, err := session.GetBoolean("AUTH")
-			if err != nil {
-				logging.Debug(err)
-				ctx.StatusCode(iris.StatusForbidden)
-				return
-			}
-			if !auth {
-				ctx.StatusCode(iris.StatusForbidden)
+			if !LoginAuth(ctx) {
 				return
 			}
 			item := ctx.FormValue("item")
@@ -219,12 +212,8 @@ func main() {
 				WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
 				return
 			} else {
-				name := session.GetString("NAME")
-				_, err = cli.Do("WATCH", "store:item:"+item)
-				_, err = cli.Do("MULTI")
-				_, err = cli.Do("SET", "store:item:"+item, count-1)
-				_, err = cli.Do("RPUSH", "store:purchase:"+item, name)
-				_, err := cli.Do("EXEC")
+				name := sess.Start(ctx).GetString("NAME")
+				err = wheel.Purchase(cli, name, item, count)
 				if err != nil {
 					WriteJson(ctx, 10005, "抢购失败，请重试", nil)
 					return
@@ -232,17 +221,33 @@ func main() {
 				WriteJson(ctx, 0, "OK", nil)
 			}
 		})
+		main.Get("/account", func(ctx context.Context) {
+			if !LoginAuth(ctx) {
+				return
+			}
+			nick := sess.Start(ctx).GetString("NICK")
+			name := sess.Start(ctx).GetString("NAME")
+			ctx.ViewData("nick", nick)
+			ctx.ViewData("name", name)
+			err = ctx.View("account.html")
+		})
+		main.Get("/list", func(ctx context.Context) {
+			if !LoginAuth(ctx) {
+				return
+			}
+			name := sess.Start(ctx).GetString("NAME")
+			list, err := wheel.GetPurchaseList(cli, name)
+			if err != nil {
+				WriteJson(ctx, 10000, "查询失败", nil)
+				return
+			}
+			WriteSliceJson(ctx, 0, "OK", "list", list)
+		})
 	}
 
 	//主页
 	app.Get("/", func(ctx context.Context) {
-		auth, err := sess.Start(ctx).GetBoolean("AUTH")
-		if err != nil {
-			err = ctx.View("login.html") // 已经注册到www文件夹了
-			return
-		}
-		if !auth {
-			err = ctx.View("login.html") // 已经注册到www文件夹了
+		if !LoginAuth(ctx) {
 			return
 		}
 		nick := sess.Start(ctx).GetString("NICK")
@@ -270,6 +275,19 @@ func main() {
 	}
 }
 
+func WriteSliceJson(context context.Context, code int, message string, name string, sli []string) {
+	data := make(map[string]interface{})
+	data["code"] = code
+	data["message"] = message
+	if sli != nil {
+		data[name] = sli
+	}
+	_, err := context.JSON(data)
+	if err != nil {
+		return
+	}
+}
+
 func WriteJson(context context.Context, code int, message string, cbk func(map[string]interface{})) {
 	data := make(map[string]interface{})
 	data["code"] = code
@@ -281,4 +299,13 @@ func WriteJson(context context.Context, code int, message string, cbk func(map[s
 	if err != nil {
 		return
 	}
+}
+
+func LoginAuth(ctx context.Context) bool {
+	auth, _ := sess.Start(ctx).GetBoolean("AUTH")
+	if !auth {
+		_ = ctx.View("login.html") // 已经注册到www文件夹了
+		return false
+	}
+	return true
 }
