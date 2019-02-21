@@ -16,6 +16,7 @@ store:User:SJJ
 store:Item为商品列表 如store:User:notepad则表示有一件商品，商品名为notepad
 store:User:notepad
 {
+	item: "notepad"
 	describe: "xxx",
 	count: 10
 }
@@ -59,7 +60,7 @@ func CheckItem(cli redis.Conn, item string) (int64, error) {
 }
 
 func SetItem(cli redis.Conn, item string, describe string, count int64) error {
-	_, err := cli.Do("HMSET", "store:Item:"+item, "describe", describe, "count", count)
+	_, err := cli.Do("HMSET", "store:Item:"+item, "item", item, "describe", describe, "count", count)
 	_, err = cli.Do("RPUSH", "store:List", item)
 	return err
 }

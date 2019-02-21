@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/dchest/captcha"
 	"github.com/garyburd/redigo/redis"
 	"github.com/kataras/iris"
@@ -135,6 +134,7 @@ func main() {
 				logging.Debug("new user: ", name)
 			}
 			WriteJson(ctx, 0, "OK", nil)
+			ctx.Redirect("/")
 		})
 	}
 
@@ -180,7 +180,7 @@ func main() {
 						if err != nil {
 							logging.Println("登陆失败")
 						}
-						ctx.Redirect("/", iris.StatusMovedPermanently)
+						ctx.Redirect("/")
 					} else {
 						WriteJson(ctx, 10003, "用户名或密码错误", nil)
 						return
@@ -195,7 +195,8 @@ func main() {
 		login.Get("/out", func(ctx context.Context) {
 			session := sess.Start(ctx)
 			session.Set("AUTH", false)
-			WriteJson(ctx, 0, "OK", nil)
+			//WriteJson(ctx, 0, "OK", nil)
+			ctx.Redirect("/")
 		})
 	}
 
@@ -228,14 +229,18 @@ func main() {
 			}
 			nick := sess.Start(ctx).GetString("NICK")
 			name := sess.Start(ctx).GetString("NAME")
+			count, err := wheel.GetPurchaseCount(cli, name)
 			ctx.ViewData("nick", nick)
 			ctx.ViewData("name", name)
+			ctx.ViewData("count", count)
 			err = ctx.View("account.html")
+			if err != nil {
+				return
+			}
 		})
-		main.Get("/list123", func(ctx context.Context) {
-			fmt.Println("list")
+		main.Get("/list", func(ctx context.Context) {
+			//ctx.Header("Cache-Control", "no-store")
 			if !LoginAuth(ctx) {
-				fmt.Println("未登录")
 				return
 			}
 			list, err := wheel.GetItemList(cli)
@@ -246,6 +251,7 @@ func main() {
 			WriteSliceJson(ctx, 0, "OK", "list", list)
 		})
 		main.Get("/order", func(ctx context.Context) {
+			ctx.Header("Cache-Control", "no-store")
 			if !LoginAuth(ctx) {
 				return
 			}
@@ -320,7 +326,7 @@ func WriteJson(context context.Context, code int, message string, cbk func(map[s
 func LoginAuth(ctx context.Context) bool {
 	auth, _ := sess.Start(ctx).GetBoolean("AUTH")
 	if !auth {
-		ctx.Redirect("/", iris.StatusMovedPermanently)
+		ctx.Redirect("/")
 		return false
 	}
 	return true

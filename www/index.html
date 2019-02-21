@@ -8,7 +8,7 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 
-    <title>Hello, world!</title>
+    <title>秒杀商城</title>
   </head>
   <body>
     <div class="container">
@@ -19,7 +19,11 @@
                         <ul class="navbar-nav">
                             <li class="nav-item active">
                                  <a class="nav-link" href="/main/account">{{ .nick }}<span class="sr-only">(current)</span></a>
-                                 <!--这个地方注册之后要变成个人信息，然后文字变成用户名-->
+                            </li>
+                        </ul>
+                        <ul class="navbar-nav ml-auto">
+                            <li class="nav-item active">
+                                <a class="nav-link" href="/login/out">登出</a>
                             </li>
                         </ul>
                 </nav>
