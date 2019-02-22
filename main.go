@@ -40,9 +40,8 @@ func main() {
 	{
 		api.Get("/setItem", func(ctx context.Context) {
 			item := ctx.FormValue("item")
-			str := ctx.FormValue("count")
+			count := ctx.FormValue("count")
 			describe := ctx.FormValue("describe")
-			count, err := strconv.ParseInt(str, 10, 64)
 			session := sess.Start(ctx)
 			admin, err := session.GetBoolean("ADMIN")
 			if err != nil {
@@ -133,7 +132,6 @@ func main() {
 			} else {
 				logging.Debug("new user: ", name)
 			}
-			WriteJson(ctx, 0, "OK", nil)
 			ctx.Redirect("/")
 		})
 	}
@@ -210,6 +208,11 @@ func main() {
 			}
 			item := ctx.FormValue("item")
 			count, err := wheel.CheckItem(cli, item)
+			str := strconv.FormatInt(count, 10)
+			logging.Println(item + ":" + str)
+			if err != nil {
+				logging.Println(err)
+			}
 			if count <= 0 {
 				WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
 				return
@@ -275,6 +278,13 @@ func main() {
 		nick := sess.Start(ctx).GetString("NICK")
 		ctx.ViewData("nick", nick)
 		err = ctx.View("index.html")
+
+		/*html, err := ioutil.ReadFile("./www/index.html")
+		str := string(html[:])
+		_, err = ctx.HTML(str)
+		if err != nil {
+			return
+		}*/
 	})
 
 	//使用StaticWeb中间件处理静态文件

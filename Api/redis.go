@@ -2,6 +2,7 @@ package wheel
 
 import (
 	"github.com/garyburd/redigo/redis"
+	"strconv"
 )
 
 /*
@@ -55,11 +56,12 @@ func GetPwd(cli redis.Conn, name string) (string, error) {
 }
 
 func CheckItem(cli redis.Conn, item string) (int64, error) {
-	count, err := redis.Int64(cli.Do("HGET", "store:Item:"+item, "count"))
+	str, err := redis.String(cli.Do("HGET", "store:Item:"+item, "count"))
+	count, _ := strconv.ParseInt(str, 10, 64)
 	return count, err
 }
 
-func SetItem(cli redis.Conn, item string, describe string, count int64) error {
+func SetItem(cli redis.Conn, item string, describe string, count string) error {
 	_, err := cli.Do("HMSET", "store:Item:"+item, "item", item, "describe", describe, "count", count)
 	_, err = cli.Do("RPUSH", "store:List", item)
 	return err
@@ -90,11 +92,12 @@ func GetItemList(cli redis.Conn) ([]map[string]string, error) {
 }
 
 func Purchase(cli redis.Conn, name string, item string, count int64) error {
-	_, err := cli.Do("WATCH", "store:Item:"+item)
-	_, err = cli.Do("MULTI")
-	_, err = cli.Do("SET", "store:Item:"+item, count-1)
+	//_, err := cli.Do("WATCH", "store:Item:" + item)
+	str := strconv.FormatInt(count-1, 10)
+	_, err := cli.Do("MULTI")
+	_, err = cli.Do("HSET", "store:Item:"+item, "count", str)
 	_, err = cli.Do("RPUSH", "store:Purchase:"+item, name)
-	_, err = cli.Do("RPUSH", "store:User"+name+":List", item)
+	_, err = cli.Do("RPUSH", "store:User:"+name+":List", item)
 	_, err = cli.Do("EXEC")
 	return err
 }

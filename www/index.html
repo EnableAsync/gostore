@@ -46,11 +46,11 @@
     <div class="row">
         <div class="col-md-12">
             <div class="row" id="app">
-                <div class="col-md-4 mt-1" v-for="ware in list">
+                <div class="col-md-4 mt-1" v-for="ware in list" :key="ware.item">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">{{ ware.item }}</h5>
-                            <p class="card-text">{{ ware.describe }}</p>
+                            <h5 class="card-title" v-text="ware.item"></h5>
+                            <p class="card-text" v-text="ware.describe"></p>
                             <div class="row">
                                 <div class="col-sm-8 mt-2">
                                     <div class="progress">
@@ -60,13 +60,34 @@
                                 </div>
                                 <div class="col-sm-4">
                                     <p>
-                                        <button class="btn btn-primary" @click="purchase(ware.item)" data-toggle="popover"
-                                                data-trigger="focus" :title="title" :data-content="content">Purchase
+                                        <button class="btn btn-primary" @click="purchase(ware.item)" data-toggle="modal" data-target="#myModal">Purchase
                                         </button>
                                     </p>
                                 </div>
 
                             </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="myModal">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+
+                            <!-- 模态框头部 -->
+                            <div class="modal-header">
+                                <h4 class="modal-title" v-text="title"></h4>
+                                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            </div>
+
+                            <!-- 模态框主体 -->
+                            <div class="modal-body" v-text="content">
+                            </div>
+
+                            <!-- 模态框底部 -->
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -84,31 +105,31 @@
         $(document).ready(function () {
             $('[data-toggle="popover"]').popover();
         });
-        
-        new Vue({
+
+        axios.get('/main/list').then(response => {
+            vm.list = response.data.list
+        })
+
+        vm = new Vue({
             el: "#app",
             data: {
-                "code": 0,
+                "code": 10000,
                 "list": null,
                 "message": null,
                 "title": null,
                 "content": null
             },
             methods: {
-                purchase: function (name) {
-                    axios.get({
-                        url: '/main/purchase',
-                        params: {
-                            item: name
-                        }
-                    }).then(response => {
-                        if (response.code !== 0) {
+                purchase(name) {
+                    axios.get('/main/purchase?item=' + name).then(response => {
+                        if (response.data.code !== 0) {
                             this.title = "抢购失败！"
-                            this.content = response.message
+                            this.content = response.data.message
                         } else {
                             this.title = "抢购成功！"
                             this.content = "恭喜您抢购到" + name + "一件！"
                         }
+                        $('[data-toggle="popover"]').popover('show');
                     })
                 }
             }
