@@ -65,7 +65,7 @@
                     <th>
                         <div>
                             <button type="button" class="btn btn-primary"
-                                    @click="add(good.item, good.describe, good.count)" data-toggle="modal"
+                                    @click="update(good.item, good.describe, good.count)" data-toggle="modal"
                                     data-target="#myModal">新增
                             </button>
                         </div>
@@ -88,9 +88,11 @@
                     </th>
                     <th>
                         <div>
-                            <button type="button" class="btn btn-primary" @click="update" data-toggle="modal"
+                            <button type="button" class="btn btn-primary"
+                                    @click="update(ware.item, ware.describe, ware.count)" data-toggle="modal"
                                     data-target="#myModal">更新
                             </button>
+
                         </div>
                         <!--<div class="btn-group">-->
                         <!--<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">-->
@@ -105,7 +107,30 @@
                 </tr>
 
             </table>
+            <div class="modal fade" id="myModal">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+
+                        <!-- 模态框头部 -->
+                        <div class="modal-header">
+                            <h4 class="modal-title" v-text="title"></h4>
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        </div>
+
+                        <!-- 模态框主体 -->
+                        <div class="modal-body" v-text="content">
+                        </div>
+
+                        <!-- 模态框底部 -->
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
         </div>
+
         <!-- <div class="col-md-12">
             <table class="table table-striped">
                 <thead>
@@ -160,18 +185,7 @@
         el: '#app',
         data: {
             "code": 10000,
-            "list": [
-                {
-                    "count": "96",
-                    "describe": "It is a lovely notepad.",
-                    "item": "notepad"
-                },
-                {
-                    "count": "7",
-                    "describe": "It's an expensive Ipad.",
-                    "item": "ipad"
-                }
-            ],
+            "list": null,
             "message": null,
             "title": null,
             "content": null,
@@ -183,20 +197,18 @@
         },
         methods: {
             update(item, describe, count) {
-                axios.post(
-                    '/api/setItem',
-                    {
-                        item: item,
-                        describe: describe,
-                        count: count
-                    }
-                ).then(response => {
+                var params = new URLSearchParams();
+                params.append('item', item);
+                params.append('describe', describe);
+                params.append('count', count);
+                axios.post('/api/setItem', params).then(response => {
                     if (response.data.code !== 0) {
-                        this.title = "操作失败！"
-                        this.content = response.data.message
+                        this.title = "操作失败！";
+                        this.content = response.data.message;
                     } else {
-                        this.title = "操作成功！"
-                        vm.list.append({
+                        this.title = "操作成功！";
+                        this.content = "已更新 " + item + " 为 " + count + " 件！";
+                        vm.list.push({
                             "item": item,
                             "describe": describe,
                             "count": count

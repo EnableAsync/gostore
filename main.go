@@ -49,12 +49,17 @@ func main() {
 				ctx.StatusCode(iris.StatusForbidden)
 				return
 			}
-			item := ctx.FormValue("item")
-			describe := ctx.FormValue("describe")
-			count := ctx.FormValue("count")
+			item := ctx.PostValue("item")
+			describe := ctx.PostValue("describe")
+			count := ctx.PostValue("count")
+			logging.Println("setItem", item, describe, count)
+			if item == "" || describe == "" || count == "" {
+				WriteJson(ctx, 10001, "设置失败，商品信息有误！", nil)
+				return
+			}
 			err = wheel.SetItem(cli, item, describe, count)
 			if err != nil {
-				WriteJson(ctx, 10001, "设置失败", nil)
+				WriteJson(ctx, 10001, "设置失败，数据库出错辣！", nil)
 				return
 			}
 			WriteJson(ctx, 0, "OK", nil)
@@ -148,8 +153,10 @@ func main() {
 			if name == "admin" && pwd == "admin" {
 				session := sess.Start(ctx)
 				session.Set("NAME", "admin")
+				session.Set("NICK", "admin")
 				session.Set("ADMIN", true)
-				ctx.Redirect("/")
+				session.Set("AUTH", true)
+				ctx.Redirect("/main/manage")
 			}
 			if name == "" || pwd == "" || capt == "" {
 				WriteJson(ctx, 10000, "缺少参数", nil)
