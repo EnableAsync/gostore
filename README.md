@@ -1,5 +1,15 @@
-A panic buying mall app written with golang and redis
+这是一个用go语言的iris框架、redis、vue.js共同完成的秒杀商城
 
-Thanks to bncfbb for answering the questions about the use of the iris framework.
+感谢bncfbb解答我在使用iris时出现的各种疑问
 
-Thank Emon for writing the template for the mall Homepage
+感谢Emon写的网页模板
+
+感谢查看该项目的你，如有错误欢迎指正！
+
+默认用户账号：boy
+默认用户密码：boy
+
+默认管理员账号：admin
+默认管理员密码：admin
+使用管理员账号可以添加商品
+(偷偷告诉你，用管理员账号登陆验证码可以随便输哦~）
