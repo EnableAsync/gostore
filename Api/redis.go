@@ -94,7 +94,7 @@ func GetItemList(cli redis.Conn) ([]map[string]string, error) {
 }
 
 func Purchase(cli redis.Conn, name string, item string, count int64) error {
-	//_, err := cli.Do("WATCH", "store:Item:" + item)
+	_, err := cli.Do("WATCH", "store:Item:"+item)
 	str := strconv.FormatInt(count-1, 10)
 	_, err := cli.Do("MULTI")
 	_, err = cli.Do("HSET", "store:Item:"+item, "count", str)
