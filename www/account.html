@@ -8,20 +8,27 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/4.0.0/css/bootstrap.min.css"
           integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-
-    <title>Hello, world!</title>
+    <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script src="https://cdn.bootcss.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <script src="https://cdn.staticfile.org/vue/2.2.2/vue.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <title>个人信息</title>
 </head>
 <body>
 <nav class="navbar navbar-expand-sm bg-light fixed-top">
     <a class="navbar-brand" href="/">秒杀</a>
     <ul class="navbar-nav">
         <li class="nav-item active">
-            <a class="nav-link">{{ .nick }}<span class="sr-only">(current)</span></a>
-            <!--这个地方注册之后要变成个人信息，然后文字变成用户名-->
+            <a class="nav-link" href="/">返回商城<span class="sr-only">(current)</span></a>
+        </li>
+    </ul>
+    <ul class="navbar-nav ml-auto">
+        <li class="nav-item active">
+            <a class="nav-link" href="/login/out">登出</a>
         </li>
     </ul>
 </nav>
-<br>
 <div class="container" style="margin-top:80px">
     <div class="row">
         <div class="col-md-4">
@@ -33,38 +40,22 @@
                 </ul>
             </div>
         </div>
-
-        <div class="col-md-8">
+        <div class="col-md-8" id="app">
             <h2>订单信息</h2>
             <table class="table table-striped">
                 <thead>
                 <tr>
-                    <th>订单号</th>
-                    <th>下单时间</th>
-                    <th>操作</th>
+                    <th>ID</th>
+                    <th>货物名称</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr>
-                    <td>111</td>
-                    <td>1123.12.31</td>
-                    <td>
-                        <button type="button" class="btn btn-danger">取消订单</button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>112</td>
-                    <td>1123.12.31</td>
-                    <td>
-                        <button type="button" class="btn btn-danger">取消订单</button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>113</td>
-                    <td>1123.12.31</td>
-                    <td>
-                        <button type="button" class="btn btn-danger">取消订单</button>
-                    </td>
+                <tr v-for="(ware, index) in list" :key="ware.item">
+                    <td v-text="index + 1"></td>
+                    <td v-text="ware"></td>
+                    <!--<td>-->
+                        <!--<button type="button" class="btn btn-danger">取消订单</button>-->
+                    <!--</td>-->
                 </tr>
                 </tbody>
             </table>
@@ -73,23 +64,27 @@
 </div>
 <footer class="footer">
     <div class="container">
-        <div class="footer-bottom">
-            <hr>
-            <p>Presented by SJJ&amp;Emon</p>
+        <div class="mt-4 mb-3 text-muted">
+            <p>Presented by SJJ Emon</p>
         </div>
     </div>
 </footer>
-<!-- Optional JavaScript -->
-<!-- jQuery first, then Popper.js, then Bootstrap JS -->
-<script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.slim.min.js"
-        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
-        crossorigin="anonymous"></script>
-<script src="https://cdn.bootcss.com/popper.js/1.12.9/umd/popper.min.js"
-        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
-        crossorigin="anonymous"></script>
-<script src="https://cdn.bootcss.com/bootstrap/4.0.0/js/bootstrap.min.js"
-        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
-        crossorigin="anonymous"></script>
+<script>
+    axios.get('/main/order').then(response => {
+        vm.list = response.data.list
+    })
+
+    vm = new Vue({
+        el: '#app',
+        data: {
+            "code": 10000,
+            "list": null,
+            "message": null,
+            "title": null,
+            "content": null
+        }
+    })
+</script>
 </body>
 </html>
 

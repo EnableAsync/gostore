@@ -60,7 +60,8 @@
                                 </div>
                                 <div class="col-sm-4">
                                     <p>
-                                        <button class="btn btn-primary" @click="purchase(ware.item)" data-toggle="modal" data-target="#myModal">Purchase
+                                        <button class="btn btn-primary" @click="purchase(ware.item)" data-toggle="modal"
+                                                data-target="#myModal">Purchase
                                         </button>
                                     </p>
                                 </div>
@@ -102,10 +103,6 @@
         </footer>
     </div>
     <script>
-        $(document).ready(function () {
-            $('[data-toggle="popover"]').popover();
-        });
-
         axios.get('/main/list').then(response => {
             vm.list = response.data.list
         })
