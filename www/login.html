@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>登录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/login.css" rel="stylesheet">
+</head>
+<body class="text-center">
+<form class="form-login" action="/login/do" method="post">
+    <h1 class="h3 mb-3 font-weight-normal">登录</h1>
+    <label for="name" class="sr-only">用户名</label>
+    <input type="text" id="name" name="name" class="form-control" placeholder="用户名" required autofocus>
+    <label for="pwd" class="sr-only">密码</label>
+    <input type="password" id="pwd" name="pwd" class="form-control" placeholder="密码" required>
+    <label for="capt" class="sr-only">验证码</label>
+    <input type="text" id="capt" name="capt" class="form-control" placeholder="验证码" required>
+    <img class="mb-0" id="captimg" src="/captcha/create" alt="验证码" width="90" height="45.6">
+    <button class="btn btn-lg btn-primary btn-block" type="submit" id="login">登录</button>
+    <a class="btn btn-lg btn-danger btn-block" role="button" id="register" href="register.html">注册</a>
+    <p class="mt-5 mb-3 text-muted">&copy; 2019-2020</p>
+</form>
+</body>
+</html>
+
