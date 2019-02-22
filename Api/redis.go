@@ -62,9 +62,17 @@ func CheckItem(cli redis.Conn, item string) (int64, error) {
 	return count, err
 }
 
+func ItemExist(cli redis.Conn, item string) (bool, error) {
+	exist, err := redis.Bool(cli.Do("EXISTS", "store:Item:"+item))
+	return exist, err
+}
+
 func SetItem(cli redis.Conn, item string, describe string, count string) error {
-	_, err := cli.Do("HMSET", "store:Item:"+item, "item", item, "describe", describe, "count", count)
-	_, err = cli.Do("RPUSH", "store:List", item)
+	exist, err := ItemExist(cli, item)
+	_, err = cli.Do("HMSET", "store:Item:"+item, "item", item, "describe", describe, "count", count)
+	if !exist {
+		_, err = cli.Do("RPUSH", "store:List", item)
+	}
 	_, err = cli.Do("SAVE")
 	return err
 }
@@ -96,7 +104,7 @@ func GetItemList(cli redis.Conn) ([]map[string]string, error) {
 func Purchase(cli redis.Conn, name string, item string, count int64) error {
 	_, err := cli.Do("WATCH", "store:Item:"+item)
 	str := strconv.FormatInt(count-1, 10)
-	_, err := cli.Do("MULTI")
+	_, err = cli.Do("MULTI")
 	_, err = cli.Do("HSET", "store:Item:"+item, "count", str)
 	_, err = cli.Do("RPUSH", "store:Purchase:"+item, name)
 	_, err = cli.Do("RPUSH", "store:User:"+name+":List", item)

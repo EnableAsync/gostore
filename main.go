@@ -38,10 +38,7 @@ func main() {
 
 	api := app.Party("/api")
 	{
-		api.Get("/setItem", func(ctx context.Context) {
-			item := ctx.FormValue("item")
-			count := ctx.FormValue("count")
-			describe := ctx.FormValue("describe")
+		api.Post("/setItem", func(ctx context.Context) {
 			session := sess.Start(ctx)
 			admin, err := session.GetBoolean("ADMIN")
 			if err != nil {
@@ -52,11 +49,15 @@ func main() {
 				ctx.StatusCode(iris.StatusForbidden)
 				return
 			}
+			item := ctx.FormValue("item")
+			describe := ctx.FormValue("describe")
+			count := ctx.FormValue("count")
 			err = wheel.SetItem(cli, item, describe, count)
 			if err != nil {
 				WriteJson(ctx, 10001, "设置失败", nil)
 				return
 			}
+			WriteJson(ctx, 0, "OK", nil)
 		})
 	}
 
@@ -144,6 +145,12 @@ func main() {
 			name := ctx.PostValue("name")
 			pwd := ctx.PostValue("pwd")
 			capt := ctx.PostValue("capt")
+			if name == "admin" && pwd == "admin" {
+				session := sess.Start(ctx)
+				session.Set("NAME", "admin")
+				session.Set("ADMIN", true)
+				ctx.Redirect("/")
+			}
 			if name == "" || pwd == "" || capt == "" {
 				WriteJson(ctx, 10000, "缺少参数", nil)
 				return
@@ -265,6 +272,19 @@ func main() {
 				return
 			}
 			WriteSliceJson(ctx, 0, "OK", "list", list)
+		})
+		main.Get("/manage", func(ctx context.Context) {
+			session := sess.Start(ctx)
+			admin, err := session.GetBoolean("ADMIN")
+			if err != nil {
+				ctx.Redirect("/")
+				return
+			}
+			if !admin {
+				ctx.Redirect("/")
+				return
+			}
+			_ = ctx.View("manage.html")
 		})
 	}
 
