@@ -42,6 +42,7 @@ func CheckUser(cli redis.Conn, name string) (bool, error) {
 
 func AddUser(cli redis.Conn, name string, nick string, pwd string) error {
 	_, err := cli.Do("HMSET", "store:User:"+name, "nick", nick, "pwd", MD5String(pwd))
+	_, err = cli.Do("SAVE")
 	return err
 }
 
@@ -64,6 +65,7 @@ func CheckItem(cli redis.Conn, item string) (int64, error) {
 func SetItem(cli redis.Conn, item string, describe string, count string) error {
 	_, err := cli.Do("HMSET", "store:Item:"+item, "item", item, "describe", describe, "count", count)
 	_, err = cli.Do("RPUSH", "store:List", item)
+	_, err = cli.Do("SAVE")
 	return err
 }
 
@@ -99,6 +101,7 @@ func Purchase(cli redis.Conn, name string, item string, count int64) error {
 	_, err = cli.Do("RPUSH", "store:Purchase:"+item, name)
 	_, err = cli.Do("RPUSH", "store:User:"+name+":List", item)
 	_, err = cli.Do("EXEC")
+	_, err = cli.Do("SAVE")
 	return err
 }
 
