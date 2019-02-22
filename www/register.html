@@ -11,7 +11,7 @@
     <script src="js/register.js"></script>
 </head>
 <body class="text-center">
-<form class="form-register" name="register" action="http://127.0.0.1:8081/register/addUser" method="post">
+<form class="form-register" name="register" action="/register/addUser" method="post">
     <h1 class="h3 mb-3 font-weight-normal">注册</h1>
     <div id="regdiv">
         <label for="name" class="sr-only">用户名</label>
@@ -28,7 +28,7 @@
     </div>
     <label for="capt" class="sr-only">验证码</label>
     <input type="text" id="capt" name="capt" class="form-control" placeholder="验证码" required>
-    <img class="mb-0" id="captimg" src="http://127.0.0.1:8081/captcha/create" alt="验证码" width="90" height="45.6">
+    <img class="mb-0" id="captimg" src="/captcha/create" alt="验证码" width="90" height="45.6">
     <button class="btn btn-lg btn-primary btn-block" type="submit" id="register">注册</button>
     <p class="mt-5 mb-3 text-muted">&copy; 2019-2020</p>
 </form>
