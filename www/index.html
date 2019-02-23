@@ -52,20 +52,18 @@
                             <h5 class="card-title" v-text="ware.item"></h5>
                             <p class="card-text" v-text="ware.describe"></p>
                             <div class="row">
-                                <div class="col-sm-8 mt-2">
+                                <div class="col-sm-8">
                                     <div class="progress">
-                                        <div class="progress-bar w-75 progress-bar-animated">
-                                        </div>
+                                        <div class="bg-danger, progress-bar progress-bar-striped progress-bar-animated"
+                                             :class="{'bg-warning': parseInt(ware.count) < 100, 'bg-danger': parseInt(ware.count) === 0, 'bg-success': parseInt(ware.count) >= 100}"
+                                             :style="{width: parseInt(ware.count) >= 100 ? '30%' : (parseInt(ware.count) === 0 ? '100%' : '90%')}"></div>
                                     </div>
                                 </div>
-                                <div class="col-sm-4">
-                                    <p>
-                                        <button class="btn btn-primary" @click="purchase(ware.item)" data-toggle="modal"
-                                                data-target="#myModal">Purchase
-                                        </button>
-                                    </p>
+                                <div class="col-sm-4 mt-4 text-right">
+                                    <button class="btn btn-primary" @click="purchase(ware.item)" data-toggle="modal"
+                                            data-target="#myModal">Purchase
+                                    </button>
                                 </div>
-
                             </div>
                         </div>
                     </div>
