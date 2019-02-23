@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./Api"
 	"github.com/dchest/captcha"
 	"github.com/garyburd/redigo/redis"
 	"github.com/kataras/iris"
@@ -8,7 +9,6 @@ import (
 	"github.com/kataras/iris/sessions"
 	"io"
 	"net/http"
-	"store/Api"
 	"strconv"
 )
 
