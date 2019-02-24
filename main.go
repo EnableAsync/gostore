@@ -1,15 +1,16 @@
 package main
 
 import (
-	"./Api"
+	"fmt"
 	"github.com/dchest/captcha"
 	"github.com/garyburd/redigo/redis"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"github.com/kataras/iris/sessions"
+	"gostore/Api"
 	"io"
 	"net/http"
-	"strconv"
+	"runtime"
 	"time"
 )
 
@@ -21,8 +22,8 @@ var (
 
 func main() {
 	app := iris.New()
-	logging := app.Logger()
-	logging.SetLevel("debug")
+	//logging := app.Logger()
+	//logging.SetLevel("debug")
 
 	/*cli, err := redis.Dial("tcp", "127.0.0.1:6379")
 	if err != nil {
@@ -41,7 +42,7 @@ func main() {
 			redis.DialReadTimeout(300 * time.Second)
 			redis.DialWriteTimeout(300 * time.Second)
 			if err != nil {
-				logging.Println(err)
+				//logging.Println(err)
 				return nil, err
 			}
 			return cli, err
@@ -72,7 +73,7 @@ func main() {
 			item := ctx.PostValue("item")
 			describe := ctx.PostValue("describe")
 			count := ctx.PostValue("count")
-			logging.Println("setItem", item, describe, count)
+			//logging.Println("setItem", item, describe, count)
 			if item == "" || describe == "" || count == "" {
 				WriteJson(ctx, 10001, "设置失败，商品信息有误！", nil)
 				return
@@ -97,7 +98,7 @@ func main() {
 			ctx.StreamWriter(func(w io.Writer) bool {
 				err := captcha.WriteImage(w, id, 240, 80)
 				if err != nil {
-					logging.Debug(err)
+					//logging.Debug(err)
 					return false
 				}
 				return false
@@ -121,7 +122,7 @@ func main() {
 				WriteJson(ctx, 10001, "用户名已存在", nil)
 				return
 			} else {
-				logging.Debug(name)
+				//logging.Debug(name)
 				WriteJson(ctx, 0, "OK", nil)
 				return
 			}
@@ -153,10 +154,10 @@ func main() {
 			}
 			err = wheel.AddUser(cli, name, nick, pwd)
 			if err != nil {
-				logging.Debug(err)
+				//logging.Debug(err)
 				return
 			} else {
-				logging.Debug("new user: ", name)
+				//logging.Debug("new user: ", name)
 			}
 			ctx.Redirect("/")
 		})
@@ -195,7 +196,7 @@ func main() {
 			pwd = wheel.MD5String(pwd)
 			exist, err := wheel.CheckUser(cli, name)
 			if err != nil {
-				logging.Println(err)
+				//logging.Println(err)
 				WriteJson(ctx, 10000, "查询失败", nil)
 				return
 			} else {
@@ -211,7 +212,7 @@ func main() {
 						session.Set("NICK", nick)
 						session.Set("AUTH", true)
 						if err != nil {
-							logging.Println("登陆失败")
+							//logging.Println("登陆失败")
 						}
 						ctx.Redirect("/")
 					} else {
@@ -243,10 +244,10 @@ func main() {
 			}
 			item := ctx.FormValue("item")
 			count, err := wheel.CheckItem(cli, item)
-			str := strconv.FormatInt(count, 10)
-			logging.Println(item + ":" + str)
+			//str := strconv.FormatInt(count, 10)
+			//logging.Println(item + ":" + str)
 			if err != nil {
-				logging.Println(err)
+				//logging.Println(err)
 			}
 			if count <= 0 {
 				WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
@@ -256,7 +257,7 @@ func main() {
 				err = wheel.Purchase(cli, name, item)
 				if err != nil {
 					WriteJson(ctx, 10005, "抢购太快辣，请重新试试吧", nil)
-					logging.Println(err)
+					//logging.Println(err)
 					return
 				}
 				WriteJson(ctx, 0, "OK", nil)
@@ -349,9 +350,11 @@ func main() {
 		_ = ctx.View("error.html")
 	})
 
+	runtime.GOMAXPROCS(runtime.NumCPU()) //打开多核之后在多核机器上可以提升网络吞吐量
+	fmt.Println(runtime.NumCPU())
 	err := app.Run(iris.Addr(":8081"))
 	if err != nil {
-		logging.Debug(err)
+		//logging.Debug(err)
 		return
 	}
 }
