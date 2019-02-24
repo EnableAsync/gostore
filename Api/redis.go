@@ -35,61 +35,81 @@ store:List
 [notepad, iphone]
 */
 
-func CheckUser(cli redis.Conn, name string) (bool, error) {
-	exist, err := redis.Bool(cli.Do("EXISTS", "store:User:"+name))
+func CheckUser(cli *redis.Pool, name string) (bool, error) {
+	rc := cli.Get()
+	defer rc.Close()
+	exist, err := redis.Bool(rc.Do("EXISTS", "store:User:"+name))
 	return exist, err
 }
 
-func AddUser(cli redis.Conn, name string, nick string, pwd string) error {
-	_, err := cli.Do("HMSET", "store:User:"+name, "nick", nick, "pwd", MD5String(pwd))
-	_, err = cli.Do("SAVE")
+func AddUser(cli *redis.Pool, name string, nick string, pwd string) error {
+	rc := cli.Get()
+	defer rc.Close()
+	_, err := rc.Do("HMSET", "store:User:"+name, "nick", nick, "pwd", MD5String(pwd))
+	_, err = rc.Do("SAVE")
 	return err
 }
 
-func GetNickName(cli redis.Conn, name string) (string, error) {
-	nick, err := redis.String(cli.Do("HGET", "store:User:"+name, "nick"))
+func GetNickName(cli *redis.Pool, name string) (string, error) {
+	rc := cli.Get()
+	defer rc.Close()
+	nick, err := redis.String(rc.Do("HGET", "store:User:"+name, "nick"))
 	return nick, err
 }
 
-func GetPwd(cli redis.Conn, name string) (string, error) {
-	password, err := redis.String(cli.Do("HGET", "store:User:"+name, "pwd"))
+func GetPwd(cli *redis.Pool, name string) (string, error) {
+	rc := cli.Get()
+	defer rc.Close()
+	password, err := redis.String(rc.Do("HGET", "store:User:"+name, "pwd"))
 	return password, err
 }
 
-func CheckItem(cli redis.Conn, item string) (int64, error) {
-	str, err := redis.String(cli.Do("HGET", "store:Item:"+item, "count"))
+func CheckItem(cli *redis.Pool, item string) (int64, error) {
+	rc := cli.Get()
+	defer rc.Close()
+	str, err := redis.String(rc.Do("HGET", "store:Item:"+item, "count"))
 	count, _ := strconv.ParseInt(str, 10, 64)
 	return count, err
 }
 
-func ItemExist(cli redis.Conn, item string) (bool, error) {
-	exist, err := redis.Bool(cli.Do("EXISTS", "store:Item:"+item))
+func ItemExist(cli *redis.Pool, item string) (bool, error) {
+	rc := cli.Get()
+	defer rc.Close()
+	exist, err := redis.Bool(rc.Do("EXISTS", "store:Item:"+item))
 	return exist, err
 }
 
-func SetItem(cli redis.Conn, item string, describe string, count string) error {
+func SetItem(cli *redis.Pool, item string, describe string, count string) error {
+	rc := cli.Get()
+	defer rc.Close()
 	exist, err := ItemExist(cli, item)
-	_, err = cli.Do("HMSET", "store:Item:"+item, "item", item, "describe", describe, "count", count)
+	_, err = rc.Do("HMSET", "store:Item:"+item, "item", item, "describe", describe, "count", count)
 	if !exist {
-		_, err = cli.Do("RPUSH", "store:List", item)
+		_, err = rc.Do("RPUSH", "store:List", item)
 	}
-	_, err = cli.Do("SAVE")
+	_, err = rc.Do("SAVE")
 	return err
 }
 
-func GetItem(cli redis.Conn, itemname string) (map[string]string, error) {
-	item, err := redis.StringMap(cli.Do("HGETALL", "store:Item:"+itemname))
+func GetItem(cli *redis.Pool, itemname string) (map[string]string, error) {
+	rc := cli.Get()
+	defer rc.Close()
+	item, err := redis.StringMap(rc.Do("HGETALL", "store:Item:"+itemname))
 	return item, err
 }
 
-func GetListCount(cli redis.Conn) (int, error) {
-	count, err := redis.Int(cli.Do("LLEN", "store:List"))
+func GetListCount(cli *redis.Pool) (int, error) {
+	rc := cli.Get()
+	defer rc.Close()
+	count, err := redis.Int(rc.Do("LLEN", "store:List"))
 	return count, err
 }
 
-func GetItemList(cli redis.Conn) ([]map[string]string, error) {
+func GetItemList(cli *redis.Pool) ([]map[string]string, error) {
+	rc := cli.Get()
+	defer rc.Close()
 	count, err := GetListCount(cli)
-	list, err := redis.Strings(cli.Do("LRANGE", "store:List", 0, count))
+	list, err := redis.Strings(rc.Do("LRANGE", "store:List", 0, count))
 	var items []map[string]string
 	for _, item := range list {
 		context, err := GetItem(cli, item)
@@ -101,25 +121,31 @@ func GetItemList(cli redis.Conn) ([]map[string]string, error) {
 	return items, err
 }
 
-func Purchase(cli redis.Conn, name string, item string, count int64) error {
-	_, err := cli.Do("WATCH", "store:Item:"+item)
+func Purchase(cli *redis.Pool, name string, item string, count int64) error {
+	rc := cli.Get()
+	defer rc.Close()
+	_, err := rc.Do("WATCH", "store:Item:"+item)
 	str := strconv.FormatInt(count-1, 10)
-	_, err = cli.Do("MULTI")
-	_, err = cli.Do("HSET", "store:Item:"+item, "count", str)
-	_, err = cli.Do("RPUSH", "store:Purchase:"+item, name)
-	_, err = cli.Do("RPUSH", "store:User:"+name+":List", item)
-	_, err = cli.Do("EXEC")
-	_, err = cli.Do("SAVE")
+	_, err = rc.Do("MULTI")
+	_, err = rc.Do("HSET", "store:Item:"+item, "count", str)
+	_, err = rc.Do("RPUSH", "store:Purchase:"+item, name)
+	_, err = rc.Do("RPUSH", "store:User:"+name+":List", item)
+	_, err = rc.Do("EXEC")
+	_, err = rc.Do("SAVE")
 	return err
 }
 
-func GetPurchaseCount(cli redis.Conn, name string) (int, error) {
-	count, err := redis.Int(cli.Do("LLEN", "store:User:"+name+":List"))
+func GetPurchaseCount(cli *redis.Pool, name string) (int, error) {
+	rc := cli.Get()
+	defer rc.Close()
+	count, err := redis.Int(rc.Do("LLEN", "store:User:"+name+":List"))
 	return count, err
 }
 
-func GetPurchaseList(cli redis.Conn, name string) ([]string, error) {
+func GetPurchaseList(cli *redis.Pool, name string) ([]string, error) {
+	rc := cli.Get()
+	defer rc.Close()
 	count, err := GetPurchaseCount(cli, name)
-	list, err := redis.Strings(cli.Do("LRANGE", "store:User:"+name+":List", 0, count))
+	list, err := redis.Strings(rc.Do("LRANGE", "store:User:"+name+":List", 0, count))
 	return list, err
 }

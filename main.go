@@ -10,11 +10,13 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 var (
 	FastStore = "FASTSTORE"
 	sess      = sessions.New(sessions.Config{Cookie: FastStore})
+	cli       *redis.Pool
 )
 
 func main() {
@@ -22,11 +24,29 @@ func main() {
 	logging := app.Logger()
 	logging.SetLevel("debug")
 
-	cli, err := redis.Dial("tcp", "127.0.0.1:6379")
+	/*cli, err := redis.Dial("tcp", "127.0.0.1:6379")
 	if err != nil {
 		logging.Debug(err)
 	}
-	defer cli.Close()
+	defer cli.Close()*/
+
+	cli = &redis.Pool{
+		MaxIdle:     100,
+		MaxActive:   100,
+		IdleTimeout: 240 * time.Second,
+		Wait:        true,
+		Dial: func() (conn redis.Conn, e error) {
+			cli, err := redis.Dial("tcp", "127.0.0.1:6379")
+			redis.DialConnectTimeout(300 * time.Second)
+			redis.DialReadTimeout(300 * time.Second)
+			redis.DialWriteTimeout(300 * time.Second)
+			if err != nil {
+				logging.Println(err)
+				return nil, err
+			}
+			return cli, err
+		},
+	}
 
 	//使用中间件添加header信息
 	app.Use(func(ctx context.Context) {
@@ -75,7 +95,7 @@ func main() {
 			session := sess.Start(ctx)
 			session.Set("ID", id)
 			ctx.StreamWriter(func(w io.Writer) bool {
-				err = captcha.WriteImage(w, id, 240, 80)
+				err := captcha.WriteImage(w, id, 240, 80)
 				if err != nil {
 					logging.Debug(err)
 					return false
@@ -175,6 +195,7 @@ func main() {
 			pwd = wheel.MD5String(pwd)
 			exist, err := wheel.CheckUser(cli, name)
 			if err != nil {
+				logging.Println(err)
 				WriteJson(ctx, 10000, "查询失败", nil)
 				return
 			} else {
@@ -304,7 +325,7 @@ func main() {
 		}
 		nick := sess.Start(ctx).GetString("NICK")
 		ctx.ViewData("nick", nick)
-		err = ctx.View("index.html")
+		_ = ctx.View("index.html")
 
 		/*html, err := ioutil.ReadFile("./www/index.html")
 		str := string(html[:])
@@ -327,7 +348,7 @@ func main() {
 		_ = ctx.View("error.html")
 	})
 
-	err = app.Run(iris.Addr(":8081"))
+	err := app.Run(iris.Addr(":8081"))
 	if err != nil {
 		logging.Debug(err)
 		return
