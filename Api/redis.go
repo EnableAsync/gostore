@@ -140,7 +140,7 @@ func Purchase(cli *redis.Pool, name string, item string) error {
 		_, err = rc.Do("EXEC")
 		return err
 	}
-	return errors.New("抢购太快啦，请重新试试吧")
+	return errors.New("已经抢光辣，下次再试试吧")
 }
 
 func GetPurchaseCount(cli *redis.Pool, name string) (int, error) {

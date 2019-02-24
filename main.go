@@ -243,25 +243,25 @@ func main() {
 				return
 			}
 			item := ctx.FormValue("item")
-			count, err := wheel.CheckItem(cli, item)
+			//count, err := wheel.CheckItem(cli, item)
 			//str := strconv.FormatInt(count, 10)
 			//logging.Println(item + ":" + str)
+			//if err != nil {
+			//logging.Println(err)
+			//}
+			//if count <= 0 {
+			//	WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
+			//	return
+			//} else {
+			name := sess.Start(ctx).GetString("NAME")
+			err := wheel.Purchase(cli, name, item)
 			if err != nil {
-				//logging.Println(err)
-			}
-			if count <= 0 {
 				WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
+				//logging.Println(err)
 				return
-			} else {
-				name := sess.Start(ctx).GetString("NAME")
-				err = wheel.Purchase(cli, name, item)
-				if err != nil {
-					WriteJson(ctx, 10005, "抢购太快辣，请重新试试吧", nil)
-					//logging.Println(err)
-					return
-				}
-				WriteJson(ctx, 0, "OK", nil)
 			}
+			WriteJson(ctx, 0, "OK", nil)
+			//}
 		})
 		main.Get("/account", func(ctx context.Context) {
 			if !LoginAuth(ctx) {
