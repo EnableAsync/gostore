@@ -31,8 +31,8 @@ func main() {
 	defer cli.Close()*/
 
 	cli = &redis.Pool{
-		MaxIdle:     100,
-		MaxActive:   100,
+		MaxIdle:     400,
+		MaxActive:   500,
 		IdleTimeout: 240 * time.Second,
 		Wait:        true,
 		Dial: func() (conn redis.Conn, e error) {
@@ -253,9 +253,10 @@ func main() {
 				return
 			} else {
 				name := sess.Start(ctx).GetString("NAME")
-				err = wheel.Purchase(cli, name, item, count)
+				err = wheel.Purchase(cli, name, item)
 				if err != nil {
-					WriteJson(ctx, 10005, "抢购失败，请重试", nil)
+					WriteJson(ctx, 10005, "抢购太快辣，请重新试试吧", nil)
+					logging.Println(err)
 					return
 				}
 				WriteJson(ctx, 0, "OK", nil)

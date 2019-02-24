@@ -1,6 +1,7 @@
 package wheel
 
 import (
+	"errors"
 	"github.com/garyburd/redigo/redis"
 	"strconv"
 )
@@ -67,7 +68,7 @@ func GetPwd(cli *redis.Pool, name string) (string, error) {
 func CheckItem(cli *redis.Pool, item string) (int64, error) {
 	rc := cli.Get()
 	defer rc.Close()
-	str, err := redis.String(rc.Do("HGET", "store:Item:"+item, "count"))
+	str, err := redis.String(rc.Do("GET", "store:Item:"+item+":Count"))
 	count, _ := strconv.ParseInt(str, 10, 64)
 	return count, err
 }
@@ -84,6 +85,8 @@ func SetItem(cli *redis.Pool, item string, describe string, count string) error 
 	defer rc.Close()
 	exist, err := ItemExist(cli, item)
 	_, err = rc.Do("HMSET", "store:Item:"+item, "item", item, "describe", describe, "count", count)
+	remain, err := strconv.ParseInt(count, 10, 64)
+	_, err = rc.Do("SET", "store:Item:"+item+":Count", remain)
 	if !exist {
 		_, err = rc.Do("RPUSH", "store:List", item)
 	}
@@ -121,18 +124,23 @@ func GetItemList(cli *redis.Pool) ([]map[string]string, error) {
 	return items, err
 }
 
-func Purchase(cli *redis.Pool, name string, item string, count int64) error {
+func Purchase(cli *redis.Pool, name string, item string) error {
 	rc := cli.Get()
 	defer rc.Close()
-	_, err := rc.Do("WATCH", "store:Item:"+item)
-	str := strconv.FormatInt(count-1, 10)
-	_, err = rc.Do("MULTI")
-	_, err = rc.Do("HSET", "store:Item:"+item, "count", str)
-	_, err = rc.Do("RPUSH", "store:Purchase:"+item, name)
-	_, err = rc.Do("RPUSH", "store:User:"+name+":List", item)
-	_, err = rc.Do("EXEC")
-	_, err = rc.Do("SAVE")
-	return err
+	_, err := rc.Do("WATCH", "store:Item:"+item+":Count") //WATCH在前 防止超卖
+	strremain, err := redis.String(rc.Do("GET", "store:Item:"+item+":Count"))
+	remain, err := strconv.ParseInt(strremain, 10, 64)
+	if remain > 0 {
+		_, err = rc.Do("MULTI")
+		_, err = rc.Do("SET", "store:Item:"+item+":Count", remain-1)
+		_, err = rc.Do("HSET", "store:Item:"+item, "count", remain-1)
+		_, err = rc.Do("RPUSH", "store:Purchase:"+item, name)
+		_, err = rc.Do("RPUSH", "store:User:"+name+":List", item)
+		_, err = rc.Do("SAVE")
+		_, err = rc.Do("EXEC")
+		return err
+	}
+	return errors.New("抢购太快啦，请重新试试吧")
 }
 
 func GetPurchaseCount(cli *redis.Pool, name string) (int, error) {
