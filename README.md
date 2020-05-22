@@ -3,10 +3,10 @@
 
 ## 构建状态
 ### GitHub Aciton
-![](https://github.com/wingsjj/InfoHelper/workflows/Backend/badge.svg)
+[![Build Status](https://travis-ci.org/wingsjj/gostore.svg?branch=master)](https://github.com/wingsjj/gostore/actions)
 
 ### Travis
-![](https://travis-ci.org/wingsjj/gostore.svg?branch=master)
+[![Build Status](https://travis-ci.org/wingsjj/gostore.svg?branch=master)](https://travis-ci.org/wingsjj/gostore)
 
 ## 登录账号
 默认用户账号：boy
