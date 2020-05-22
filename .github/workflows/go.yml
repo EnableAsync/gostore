@@ -41,7 +41,7 @@ jobs:
           USERNAME: ${{ secrets.USERNAME }}
           PORT: ${{ secrets.PORT }}
           PASSWORD: ${{ secrets.PASSWORD }}
-          source: "./gostore"
+          source: "."
           target: "/root/action/"
 
       - name: Executing remote command
