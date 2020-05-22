@@ -1,0 +1,17 @@
+language: go
+go:
+  - 1.14.3
+
+sudo: required
+
+os:
+  - linux
+  - osx
+
+install:
+  - echo "install"
+  - go get -v -t -d ./...
+
+script:
+  - echo "build"
+  - go build -v .
