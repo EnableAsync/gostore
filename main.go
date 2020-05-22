@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"github.com/dchest/captcha"
 	"github.com/garyburd/redigo/redis"
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/context"
-	"github.com/kataras/iris/sessions"
-	"gostore/Api"
+	"github.com/kataras/iris/v12"
+	"github.com/kataras/iris/v12/sessions"
+	"gostore/util"
 	"io"
 	"net/http"
 	"runtime"
@@ -22,14 +21,6 @@ var (
 
 func main() {
 	app := iris.New()
-	//logging := app.Logger()
-	//logging.SetLevel("debug")
-
-	/*cli, err := redis.Dial("tcp", "127.0.0.1:6379")
-	if err != nil {
-		logging.Debug(err)
-	}
-	defer cli.Close()*/
 
 	cli = &redis.Pool{
 		MaxIdle:     400,
@@ -50,7 +41,7 @@ func main() {
 	}
 
 	//使用中间件添加header信息
-	app.Use(func(ctx context.Context) {
+	app.Use(func(ctx iris.Context) {
 		ctx.Header("Server", "Server/1.0")
 		ctx.Header("X-Powered-By", "SJJ")
 		ctx.Header("Access-Control-Allow-Origin", "*")
@@ -59,7 +50,7 @@ func main() {
 
 	api := app.Party("/api")
 	{
-		api.Post("/setItem", func(ctx context.Context) {
+		api.Post("/setItem", func(ctx iris.Context) {
 			session := sess.Start(ctx)
 			admin, err := session.GetBoolean("ADMIN")
 			if err != nil {
@@ -78,7 +69,7 @@ func main() {
 				WriteJson(ctx, 10001, "设置失败，商品信息有误！", nil)
 				return
 			}
-			err = wheel.SetItem(cli, item, describe, count)
+			err = util.SetItem(cli, item, describe, count)
 			if err != nil {
 				WriteJson(ctx, 10001, "设置失败，数据库出错辣！", nil)
 				return
@@ -91,7 +82,7 @@ func main() {
 	capt := app.Party("/captcha")
 	{
 		//返回验证码图片 [GET /captcha/create]
-		capt.Get("/create", func(ctx context.Context) {
+		capt.Get("/create", func(ctx iris.Context) {
 			id := captcha.NewLen(4)
 			session := sess.Start(ctx)
 			session.Set("ID", id)
@@ -110,10 +101,10 @@ func main() {
 	reg := app.Party("/register")
 	{
 		//检测用户名是否存在 [GET /register/checkUser?name=xxx]
-		reg.Get("/checkUser", func(ctx context.Context) {
+		reg.Get("/checkUser", func(ctx iris.Context) {
 
 			name := ctx.FormValue("name")
-			exist, err := wheel.CheckUser(cli, name)
+			exist, err := util.CheckUser(cli, name)
 			if err != nil {
 				WriteJson(ctx, 10000, "查询失败", nil)
 				return
@@ -128,7 +119,7 @@ func main() {
 			}
 		})
 		//增加新用户 [POST /register/addUser] 参数 name=xxx&nick=xxx&pwd=xxx&capt=xxx
-		reg.Post("/addUser", func(ctx context.Context) {
+		reg.Post("/addUser", func(ctx iris.Context) {
 			name := ctx.PostValue("name")
 			nick := ctx.PostValue("nick")
 			pwd := ctx.PostValue("pwd")
@@ -147,12 +138,12 @@ func main() {
 				WriteJson(ctx, 10002, "验证码错误", nil)
 				return
 			}
-			exist, err := wheel.CheckUser(cli, name)
+			exist, err := util.CheckUser(cli, name)
 			if exist {
 				WriteJson(ctx, 10001, "用户名已存在", nil)
 				return
 			}
-			err = wheel.AddUser(cli, name, nick, pwd)
+			err = util.AddUser(cli, name, nick, pwd)
 			if err != nil {
 				//logging.Debug(err)
 				return
@@ -167,7 +158,7 @@ func main() {
 	login := app.Party("/login")
 	{
 		//登陆 [POST /login/do] 参数 name=xxx&pwd=xxx&capt=xxxx
-		login.Post("/do", func(ctx context.Context) {
+		login.Post("/do", func(ctx iris.Context) {
 			name := ctx.PostValue("name")
 			pwd := ctx.PostValue("pwd")
 			capt := ctx.PostValue("capt")
@@ -193,21 +184,21 @@ func main() {
 				WriteJson(ctx, 10002, "验证码错误", nil)
 				return
 			}
-			pwd = wheel.MD5String(pwd)
-			exist, err := wheel.CheckUser(cli, name)
+			pwd = util.MD5String(pwd)
+			exist, err := util.CheckUser(cli, name)
 			if err != nil {
 				//logging.Println(err)
 				WriteJson(ctx, 10000, "查询失败", nil)
 				return
 			} else {
 				if exist {
-					password, err := wheel.GetPwd(cli, name)
+					password, err := util.GetPwd(cli, name)
 					if err != nil {
 						WriteJson(ctx, 10000, "查询失败", nil)
 						return
 					}
 					if password == pwd {
-						nick, err := wheel.GetNickName(cli, name)
+						nick, err := util.GetNickName(cli, name)
 						session.Set("NAME", name)
 						session.Set("NICK", nick)
 						session.Set("AUTH", true)
@@ -226,7 +217,7 @@ func main() {
 			}
 		})
 		//退出登陆 [POST /login/out]
-		login.Get("/out", func(ctx context.Context) {
+		login.Get("/out", func(ctx iris.Context) {
 			session := sess.Start(ctx)
 			session.Set("AUTH", false)
 			//WriteJson(ctx, 0, "OK", nil)
@@ -238,38 +229,26 @@ func main() {
 	{
 
 		//抢购 [GET /main/purchase?item=xxx]
-		main.Get("/purchase", func(ctx context.Context) {
+		main.Get("/purchase", func(ctx iris.Context) {
 			if !LoginAuth(ctx) {
 				return
 			}
 			item := ctx.FormValue("item")
-			//count, err := wheel.CheckItem(cli, item)
-			//str := strconv.FormatInt(count, 10)
-			//logging.Println(item + ":" + str)
-			//if err != nil {
-			//logging.Println(err)
-			//}
-			//if count <= 0 {
-			//	WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
-			//	return
-			//} else {
 			name := sess.Start(ctx).GetString("NAME")
-			err := wheel.Purchase(cli, name, item)
+			err := util.Purchase(cli, name, item)
 			if err != nil {
-				WriteJson(ctx, 10004, "已经抢光辣，下次再试试吧", nil)
-				//logging.Println(err)
+				WriteJson(ctx, 10004, "已经抢光了，下次再试试吧", nil)
 				return
 			}
 			WriteJson(ctx, 0, "OK", nil)
-			//}
 		})
-		main.Get("/account", func(ctx context.Context) {
+		main.Get("/account", func(ctx iris.Context) {
 			if !LoginAuth(ctx) {
 				return
 			}
 			nick := sess.Start(ctx).GetString("NICK")
 			name := sess.Start(ctx).GetString("NAME")
-			count, err := wheel.GetPurchaseCount(cli, name)
+			count, err := util.GetPurchaseCount(cli, name)
 			ctx.ViewData("nick", nick)
 			ctx.ViewData("name", name)
 			ctx.ViewData("count", count)
@@ -278,32 +257,32 @@ func main() {
 				return
 			}
 		})
-		main.Get("/list", func(ctx context.Context) {
+		main.Get("/list", func(ctx iris.Context) {
 			//ctx.Header("Cache-Control", "no-store")
 			if !LoginAuth(ctx) {
 				return
 			}
-			list, err := wheel.GetItemList(cli)
+			list, err := util.GetItemList(cli)
 			if err != nil {
 				WriteJson(ctx, 10000, "查询失败", nil)
 				return
 			}
 			WriteSliceJson(ctx, 0, "OK", "list", list)
 		})
-		main.Get("/order", func(ctx context.Context) {
+		main.Get("/order", func(ctx iris.Context) {
 			ctx.Header("Cache-Control", "no-store")
 			if !LoginAuth(ctx) {
 				return
 			}
 			name := sess.Start(ctx).GetString("NAME")
-			list, err := wheel.GetPurchaseList(cli, name)
+			list, err := util.GetPurchaseList(cli, name)
 			if err != nil {
 				WriteJson(ctx, 10000, "查询失败", nil)
 				return
 			}
 			WriteSliceJson(ctx, 0, "OK", "list", list)
 		})
-		main.Get("/manage", func(ctx context.Context) {
+		main.Get("/manage", func(ctx iris.Context) {
 			session := sess.Start(ctx)
 			admin, err := session.GetBoolean("ADMIN")
 			if err != nil {
@@ -319,7 +298,7 @@ func main() {
 	}
 
 	//主页
-	app.Get("/", func(ctx context.Context) {
+	app.Get("/", func(ctx iris.Context) {
 		auth, _ := sess.Start(ctx).GetBoolean("AUTH")
 		if !auth {
 			_ = ctx.View("login.html") // 已经注册到www文件夹了
@@ -328,21 +307,16 @@ func main() {
 		nick := sess.Start(ctx).GetString("NICK")
 		ctx.ViewData("nick", nick)
 		_ = ctx.View("index.html")
-
-		/*html, err := ioutil.ReadFile("./www/index.html")
-		str := string(html[:])
-		_, err = ctx.HTML(str)
-		if err != nil {
-			return
-		}*/
 	})
 
 	//使用StaticWeb中间件处理静态文件
-	app.StaticWeb("/", "www")
+	//app.StaticWeb("/", "www")
+	//app.StaticContent("/", "www")
+	app.HandleDir("/", "./www")
+	app.RegisterView(iris.HTML("www", ".html"))
 
 	//自定义错误页面
-	app.RegisterView(iris.HTML("www", ".html"))
-	app.OnAnyErrorCode(func(ctx context.Context) {
+	app.OnAnyErrorCode(func(ctx iris.Context) {
 		code := ctx.GetStatusCode()
 		ctx.ViewData("code", code)
 		ctx.ViewData("msg", http.StatusText(code))
@@ -352,14 +326,16 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU()) //打开多核之后在多核机器上可以提升网络吞吐量
 	fmt.Println(runtime.NumCPU())
-	err := app.Run(iris.Addr(":8081"))
+
+	config := util.GetConfig()
+	port := config["Port"].(string)
+	err := app.Run(iris.Addr(port))
 	if err != nil {
-		//logging.Debug(err)
 		return
 	}
 }
 
-func WriteSliceJson(context context.Context, code int, message string, name string, sli interface{}) {
+func WriteSliceJson(context iris.Context, code int, message string, name string, sli interface{}) {
 	data := make(map[string]interface{})
 	data["code"] = code
 	data["message"] = message
@@ -372,7 +348,7 @@ func WriteSliceJson(context context.Context, code int, message string, name stri
 	}
 }
 
-func WriteJson(context context.Context, code int, message string, cbk func(map[string]interface{})) {
+func WriteJson(context iris.Context, code int, message string, cbk func(map[string]interface{})) {
 	data := make(map[string]interface{})
 	data["code"] = code
 	data["message"] = message
@@ -385,7 +361,7 @@ func WriteJson(context context.Context, code int, message string, cbk func(map[s
 	}
 }
 
-func LoginAuth(ctx context.Context) bool {
+func LoginAuth(ctx iris.Context) bool {
 	auth, _ := sess.Start(ctx).GetBoolean("AUTH")
 	if !auth {
 		ctx.Redirect("/")
