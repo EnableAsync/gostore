@@ -3,7 +3,7 @@
 
 ## 构建状态
 ### GitHub Aciton
-[![Build Status](https://github.com/wingsjj/gostore/workflows/Backend/badge.svg)](https://github.com/wingsjj/gostore/actions)
+[![Build Status](https://travis-ci.org/wingsjj/gostore.svg?branch=master)](https://github.com/wingsjj/gostore/actions)
 
 ### Travis
 [![Build Status](https://travis-ci.org/wingsjj/gostore.svg?branch=master)](https://travis-ci.org/wingsjj/gostore)
