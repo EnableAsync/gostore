@@ -1,5 +1,5 @@
 # 项目介绍
-这是一个使用 iris 框架、redis、vue.js共同完成的秒杀商城
+这是一个使用 iris 框架、redis、vue.js 共同完成的秒杀商城
 
 ## 构建状态
 ### GitHub Aciton
